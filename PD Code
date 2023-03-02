@@ -1,0 +1,95 @@
+// Define the temperature sensor pin
+#define TEMP_SENSOR_PIN A0
+
+// Define the mixer control pin
+#define MIXER_PIN 9
+
+// Define temperature thresholds
+#define MIN_TEMP_48_HOURS 25
+#define MAX_TEMP_48_HOURS 35
+#define MIN_TEMP_72_HOURS 40
+#define MAX_TEMP_72_HOURS 50
+
+// Define timing constants
+#define MIXER_ON_TIME 60000  // 1 minute in milliseconds
+#define MIXER_OFF_TIME_48_HOURS 172800000  // 48 hours in milliseconds
+#define MIXER_OFF_TIME_72_HOURS 86400000   // 24 hours in milliseconds
+
+// Define variables
+unsigned long mixerStartTime = 0;  // Time that the mixer started running
+unsigned long currentTime = 0;     // Current time
+unsigned long mixerOffTime = 0;    // Time to turn the mixer off
+
+void setup() {
+  // Set the mixer pin as an output
+  pinMode(MIXER_PIN, OUTPUT);
+}
+
+void loop() {
+  // Read the current temperature
+  float temp = readTemperature();
+
+  // Check if we're within the first 48 hours
+  if (millis() < MIXER_OFF_TIME_48_HOURS) {
+    // Check if the temperature is within the desired range
+    if (temp < MIN_TEMP_48_HOURS || temp > MAX_TEMP_48_HOURS) {
+      // Turn on the mixer if it's not already running
+      if (!mixerRunning()) {
+        startMixer();
+      }
+    } else {
+      // Turn off the mixer if it's running
+      if (mixerRunning()) {
+        stopMixer();
+      }
+    }
+  } else {
+    // Check if we're within the second 24 hours
+    if (millis() < MIXER_OFF_TIME_48_HOURS + MIXER_OFF_TIME_72_HOURS) {
+      // Check if the temperature is within the desired range
+      if (temp < MIN_TEMP_72_HOURS || temp > MAX_TEMP_72_HOURS) {
+        // Turn on the mixer if it's not already running
+        if (!mixerRunning()) {
+          startMixer();
+        }
+      } else {
+        // Turn off the mixer if it's running
+        if (mixerRunning()) {
+          stopMixer();
+        }
+      }
+    } else {
+      // Turn off the mixer if it's still running
+      if (mixerRunning()) {
+        stopMixer();
+      }
+    }
+  }
+}
+
+float readTemperature() {
+  // Read the analog value from the temperature sensor
+  int sensorValue = analogRead(TEMP_SENSOR_PIN);
+
+  // Convert the analog value to a temperature in degrees Celsius
+  float temperature = (5.0 * sensorValue * 100.0) / 1024.0;
+
+  return temperature;
+}
+
+void startMixer() {
+  // Turn on the mixer and record the start time
+  digitalWrite(MIXER_PIN, HIGH);
+  mixerStartTime = millis();
+}
+
+void stopMixer() {
+  // Turn off the mixer and reset the start time
+  digitalWrite(MIXER_PIN, LOW);
+  mixerStartTime = 0;
+}
+
+bool mixerRunning() {
+  // Check if the mixer is currently running
+  return (mixerStartTime != 0 && (millis() - mixerStartTime) < MIXER_ON_TIME);
+}
